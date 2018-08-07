@@ -40,6 +40,7 @@ OFFSET $3::int
 """
 
 PAGE_SIZE = 1000
+TIMEOUT_PERIOD = 60
 
 GET_OBS_BY_TID = f"""
 SELECT zoid, tid, otid, parent_id
@@ -122,14 +123,14 @@ class Vacuum:
         async with self.txn._lock:
             return await conn.fetch(
                 BATCHED_GET_CHILDREN_BY_PARENT, oids,
-                page_size, (page - 1) * page_size)
+                page_size, (page - 1) * page_size, timeout=TIMEOUT_PERIOD)
 
     def backoff_hdlr(details):
         logger.debug("Backing off {wait:0.1f} seconds afters {tries} tries "
                "calling function {target} with args {args} and kwargs "
                "{kwargs}".format(**details))
 
-    @backoff.on_exception(backoff.expo, exception=Exception, on_backoff=backoff_hdlr, max_time=10*60 )
+    @backoff.on_exception(backoff.expo, exception=Exception, on_backoff=backoff_hdlr, max_time=10*TIMEOUT_PERIOD )
     async def get_page_from_tid(self):
         conn = await self.txn.get_connection()
         clear_conn_statement_cache(conn)
@@ -138,7 +139,7 @@ class Vacuum:
         async with self.txn._lock:
             start = timeit.default_timer()
 
-            results = await conn.fetch(GET_OBS_BY_TID, queried_tid)
+            results = await conn.fetch(GET_OBS_BY_TID, queried_tid, timeout=TIMEOUT_PERIOD)
             stop = timeit.default_timer()
             duration = stop - start
             logger.warning(f"----Duration to fetch Objects by TID {duration:.2f}s")
@@ -175,7 +176,7 @@ class Vacuum:
                         clear_conn_statement_cache(conn)
                         start = timeit.default_timer()
                         results = await conn.fetch(
-                            GET_ALL_FOR_TID, self.last_tid, self.last_zoid)
+                            GET_ALL_FOR_TID, self.last_tid, self.last_zoid, timeout=TIMEOUT_PERIOD)
                         stop = timeit.default_timer()
                         duration = stop - start
                         logger.warning(f" Got all for TID in {duration:.2f}s")
@@ -190,7 +191,7 @@ class Vacuum:
                             clear_conn_statement_cache(conn)
                             start = timeit.default_timer()
                             results = await conn.fetch(
-                                GET_ALL_FOR_TID, self.last_tid, self.last_zoid)
+                                GET_ALL_FOR_TID, self.last_tid, self.last_zoid, timeout=TIMEOUT_PERIOD)
                             stop = timeit.default_timer()
                             duration = stop - start
                             logger.warning(f"More results - Got all for TID in {duration:.2f}s")
@@ -283,7 +284,7 @@ class Vacuum:
             checked += len(es_batch)
             clear_conn_statement_cache(conn)
             async with self.txn._lock:
-                records = await conn.fetch(SELECT_BY_KEYS, es_batch)
+                records = await conn.fetch(SELECT_BY_KEYS, es_batch, timeout=TIMEOUT_PERIOD)
             db_batch = set()
             for record in records:
                 db_batch.add(record['zoid'])
@@ -330,7 +331,7 @@ class Vacuum:
         if self.use_tid_query:
             # if it's enabled, check to see if we can
             containers = await conn.fetch(
-                'select zoid from objects where parent_id = $1', ROOT_ID)
+                'select zoid from objects where parent_id = $1', ROOT_ID, timeout=TIMEOUT_PERIOD)
             if len(containers) > 1:
                 # more than 1 container, we can't optimize by querying by tids
                 self.use_tid_query = False
