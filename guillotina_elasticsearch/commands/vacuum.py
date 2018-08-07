@@ -126,7 +126,7 @@ class Vacuum:
                 page_size, (page - 1) * page_size, timeout=TIMEOUT_PERIOD)
 
     def backoff_hdlr(details):
-        logger.debug("Backing off {wait:0.1f} seconds afters {tries} tries "
+        logger.info("Backing off {wait:0.1f} seconds afters {tries} tries "
                "calling function {target} with args {args} and kwargs "
                "{kwargs}".format(**details))
 
@@ -343,7 +343,7 @@ class Vacuum:
                 try:
                     oids = [r['zoid'] for r in batch]
 
-                    logger.debug(f'Got PG batch of {len(batch)}...Checking ES')
+                    logger.info(f'Got PG batch of {len(batch)}...Checking ES')
                     results = await self.utility.conn.search(
                         self.index_name, body={
                             'query': {
@@ -364,7 +364,7 @@ class Vacuum:
                             'parent_uuid': result.get('parent_uuid', ['_missing_'])[0]
                         }
 
-                    logger.debug(f'{len(results["hits"]["hits"])} elasticsearch records')
+                    logger.info(f'{len(results["hits"]["hits"])} elasticsearch records')
 
                     for record in batch:
                         oid = record['zoid']
