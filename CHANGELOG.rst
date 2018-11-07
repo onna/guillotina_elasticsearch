@@ -1,3 +1,9 @@
+1.3.34 (unreleased)
+-------------------
+
+- add tid to payload(not indexed right now)
+
+
 1.3.32 (2018-08-06)
 -------------------
 
