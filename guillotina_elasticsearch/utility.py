@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from guillotina.exceptions import RequestNotFound
+from guillotina.transactions import get_transaction
 from guillotina import configure
 from guillotina.event import notify
 from guillotina.interfaces import IAbsoluteURL
@@ -201,6 +203,19 @@ class ElasticSearchUtility(ElasticSearchManager):
         }
         return await self.query(container, query, container)
 
+    def _get_current_tid(self):
+        # make sure to get current committed tid or we may be one-behind
+        # for what was actually used to commit to db
+        try:
+            request = get_current_request()
+            txn = get_transaction(request)
+            tid = None
+            if txn:
+                tid = txn._tid
+        except RequestNotFound:
+            pass
+        return tid
+
     async def get_by_uuids(self, container, uuids, doc_type=None):
         query = {
             "query": {
@@ -392,10 +407,13 @@ class ElasticSearchUtility(ElasticSearchManager):
             check_next = True
             index_name = await self.get_index_name(container, request=request)
 
+        tid = self._get_current_tid()
         bulk_data = []
         idents = []
         result = {}
         for ident, data in datas.items():
+            if tid and tid > (data.get('tid') or 0):
+                data['tid'] = tid
             bulk_data.extend([{
                 'index': {
                     '_index': index_name,
@@ -432,12 +450,16 @@ class ElasticSearchUtility(ElasticSearchManager):
         if not self.enabled:
             return
         if len(datas) > 0:
+            tid = self._get_current_tid()
+
             bulk_data = []
             idents = []
             result = {}
             index_name = await self.get_index_name(container)
 
             for ident, data in datas.items():
+                if tid and tid > (data.get('tid') or 0):
+                    data['tid'] = tid
                 bulk_data.extend([{
                     'update': {
                         '_index': index_name,

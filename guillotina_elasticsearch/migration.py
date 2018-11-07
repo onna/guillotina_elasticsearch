@@ -404,6 +404,9 @@ class Migrator:
                 if val is not None:
                     data[index_name] = val
 
+        if ob._p_serial:
+            data['tid'] = ob._p_serial
+
         self.indexed += 1
         self.batch[ob.uuid] = {
             'action': batch_type,
