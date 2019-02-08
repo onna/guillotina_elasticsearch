@@ -186,6 +186,8 @@ class ElasticSearchUtility(ElasticSearchManager):
             final['profile'] = result['profile']
         if '_scroll_id' in result:
             final['_scroll_id'] = result['_scroll_id']
+        if 'highlight' in result:
+            final['@highlight'] = result['highlight']
 
         tdif = time.time() - t1
         logger.debug(f'Time ELASTIC {tdif}')
