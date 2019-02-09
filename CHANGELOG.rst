@@ -1,5 +1,14 @@
-1.3.34 (unreleased)
--------------------
+1.3.35
+------
+- add highlight to results
+
+1.3.34
+------
+
+- add tid
+
+1.3.33
+------
 
 - add tid to payload(not indexed right now)
 
