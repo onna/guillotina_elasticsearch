@@ -43,8 +43,8 @@ async def test_indexing_and_search(es_requester):
                 "POST", "/db/guillotina/@search", data=json.dumps({})
             )
             assert status == 200
-            assert resp["items_total"] == 1
-            assert resp["items"][0]["path"] == "/item1"
+            assert resp["items_count"] == 1
+            assert resp["member"][0]["path"] == "/item1"
 
         await run_with_retries(_test, requester)
 
@@ -55,7 +55,7 @@ async def test_indexing_and_search(es_requester):
             resp, status = await requester(
                 "POST", "/db/guillotina/@search", data=json.dumps({})
             )
-            assert resp["items_total"] == 0
+            assert resp["items_count"] == 0
 
         await run_with_retries(_test, requester)
 
@@ -87,8 +87,8 @@ async def test_removes_all_children(es_requester):
             resp, status = await requester(
                 "POST", "/db/guillotina/@search", data=json.dumps({})
             )
-            assert resp["items_total"] == 3
-            assert resp["items"][0]["@name"]
+            assert resp["items_count"] == 3
+            assert resp["member"][0]["@name"]
 
         await run_with_retries(_test, requester)
 
@@ -99,7 +99,7 @@ async def test_removes_all_children(es_requester):
             resp, status = await requester(
                 "POST", "/db/guillotina/@search", data=json.dumps({})
             )
-            assert resp["items_total"] == 0
+            assert resp["items_count"] == 0
 
         await run_with_retries(_test, requester)
 
@@ -108,13 +108,7 @@ async def test_search_unrestricted(es_requester):
     async with es_requester as requester:
         container, request, txn, tm = await setup_txn_on_container(requester)  # noqa
         resp, status = await requester(
-            "POST",
-            "/db/guillotina/@addons",
-            data=json.dumps(
-                {
-                    "id": "dbusers",
-                }
-            ),
+            "POST", "/db/guillotina/@addons", data=json.dumps({"id": "dbusers"})
         )
         assert status == 200
 
@@ -171,12 +165,12 @@ async def test_search_unrestricted(es_requester):
         assert user_auth.username == "foo_user"
         results = await utility.search_raw(container, query)
         # No results cause foo_user is not the owner of the item, but root
-        assert results["items_total"] == 0
+        assert results["items_count"] == 0
         # When unrestricted, event if the user foo_user is authenticated
         # Search raw get results
         results = await utility.search_raw(container, query, unrestricted=True)
-        assert results["items_total"] == 1
-        assert results["items"][0]["@name"] == "foo_item"
+        assert results["items_count"] == 1
+        assert results["member"][0]["@name"] == "foo_item"
 
 
 async def test_search_date(es_requester):
@@ -200,14 +194,14 @@ async def test_search_date(es_requester):
         }
         query = parser(query)
         results = await utility.search_raw(container, query)
-        assert results["items_total"] == 1
+        assert results["items_count"] == 1
 
         query = {
             "type_name": "Example",
             "modification_date__gte": (now + timedelta(seconds=2)).isoformat(),
         }
         results = await utility.search_raw(container, parser(query))
-        assert results["items_total"] == 0
+        assert results["items_count"] == 0
 
         # Test with days
 
@@ -217,14 +211,14 @@ async def test_search_date(es_requester):
             "modification_date__gte": (now + timedelta(days=-1)).isoformat(),
         }
         results = await utility.search_raw(container, parser(query))
-        assert results["items_total"] == 1
+        assert results["items_count"] == 1
 
         query = {
             "type_name": "Example",
             "modification_date__gte": (now + timedelta(days=1)).isoformat(),
         }
         results = await utility.search_raw(container, parser(query))
-        assert results["items_total"] == 0
+        assert results["items_count"] == 0
 
 
 async def test_context_search(es_requester):
@@ -267,12 +261,12 @@ async def test_context_search(es_requester):
 
         # Should only have found one result
         resp, status = await requester("GET", "/db/guillotina/folder/@search")
-        assert resp["items_total"] == 1
-        assert resp["items"][0]["parent_uuid"] == parent_uuid
-        assert resp["items"][0]["id"] == "foo_item"
+        assert resp["items_count"] == 1
+        assert resp["member"][0]["parent_uuid"] == parent_uuid
+        assert resp["member"][0]["id"] == "foo_item"
 
         resp, status = await requester("GET", "/db/guillotina/@search?type_name=Item")
-        assert resp["items_total"] == 2
+        assert resp["items_count"] == 2
 
 
 async def test_or_search(es_requester):
@@ -306,12 +300,12 @@ async def test_or_search(es_requester):
         query = parser({"type_name__or": ["Item", "Folder"]})
         await asyncio.sleep(3)
         results = await utility.search_raw(container, query)
-        assert results["items_total"] == 2
-        for item in results["items"]:
+        assert results["items_count"] == 2
+        for item in results["member"]:
             assert item["@type"] in ["Item", "Folder"]
 
         query = parser({"type_name__or": ["Item", "Example"]})
         results = await utility.search_raw(container, query)
-        assert results["items_total"] == 2
-        for item in results["items"]:
+        assert results["items_count"] == 2
+        for item in results["member"]:
             assert item["@type"] in ["Item", "Example"]

@@ -128,9 +128,15 @@ class ElasticSearchUtility(DefaultSearchUtility):
             )
             return
 
+        es_distribution = info["version"]["distribution"]
         es_version = info["version"]["number"]
 
-        if not es_version.startswith("7"):
+        supported_es = es_distribution == "elasticsearch" and es_version.startswith(
+            "7."
+        )
+        supported_os = es_distribution == "opensearch" and es_version.startswith("1.")
+
+        if not (supported_es or supported_os):
             raise Exception(f"ES cluster version not supported: {es_version}")
 
     async def initialize_catalog(self, container):
@@ -150,7 +156,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         self, real_index_name, index_manager, settings=None, mappings=None
     ):
         if ":" in real_index_name:
-            raise Exception(f"Ivalid character ':' in index name: {real_index_name}")
+            raise Exception(f"Invalid character ':' in index name: {real_index_name}")
 
         if settings is None:
             settings = await index_manager.get_index_settings()
@@ -245,11 +251,12 @@ class ElasticSearchUtility(DefaultSearchUtility):
         self,
         context,
         query,
-        doc_type=None,
         size=10,
         request=None,
         scroll=None,
         index=None,
+        search_type=None,
+        preference=None,
         unrestricted=False,
     ):
         """
@@ -270,7 +277,11 @@ class ElasticSearchUtility(DefaultSearchUtility):
         q = await self._build_security_query(context, query, size, scroll, unrestricted)
         q["ignore_unavailable"] = True
 
-        logger.debug("Generated query %s", json.dumps(query))
+        if search_type:
+            q["search_type"] = search_type
+        if preference:
+            q["preference"] = preference
+
         conn = self.get_connection()
 
         result = await conn.search(index=index, **q)
@@ -279,10 +290,11 @@ class ElasticSearchUtility(DefaultSearchUtility):
             error_message = "Unknown"
             for failure in result["_shards"].get("failures") or []:
                 error_message = failure["reason"]
-            raise QueryErrorException(reason=error_message)
+            logger.error(f"Search failed with error: {error_message}")
+            raise QueryErrorException(content={"reason": "search failed"})
         items = self._get_items_from_result(container, request, result)
         items_total = result["hits"]["total"]["value"]
-        final = {"items_total": items_total, "items": items}
+        final = {"items_count": items_total, "member": items}
 
         if "aggregations" in result:
             final["aggregations"] = result["aggregations"]
@@ -301,10 +313,10 @@ class ElasticSearchUtility(DefaultSearchUtility):
     async def get_object_by_uuid(self, container, uuid):
         query = {"filter": {"term": {"uuid": uuid}}}
         result = await self.search_raw(container, query, container)
-        if result["items_total"] == 0 or result["items_total"] > 1:
+        if result["items_count"] == 0 or result["items_count"] > 1:
             raise AttributeError("Not found a unique object")
 
-        path = result["items"][0]["path"]
+        path = result["member"][0]["path"]
         obj = await navigate_to(container, path)
         return obj
 
@@ -324,6 +336,27 @@ class ElasticSearchUtility(DefaultSearchUtility):
                 {"range": {"depth": {"gte": depth}}}
             )
         return path_query
+
+    async def get_by_path(
+        self, container, path, depth=-1, query=None, size=10, scroll=None, index=None
+    ):
+        if query is None:
+            query = {}
+        if not isinstance(path, str):
+            path = get_content_path(path)
+
+        if path is not None and path != "/":
+            path_query = {"query": {"bool": {"must": [{"match": {"path": path}}]}}}
+            if depth > -1:
+                query["query"]["bool"]["must"].append(
+                    {"range": {"depth": {"gte": depth}}}
+                )
+            query = merge_dicts(query, path_query)
+            # We need the local roles
+
+        return await self.search_raw(
+            context=container, query=query, size=size, scroll=scroll, index=index
+        )
 
     async def unindex_all_children(
         self, container, resource, index_name=None, response=noop_response
@@ -350,10 +383,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
     async def _delete_by_query(self, path_query, index_name):
         conn = self.get_connection()
         result = await conn.delete_by_query(
-            index_name,
-            body=path_query,
-            ignore_unavailable="true",
-            conflicts="proceed",
+            index_name, body=path_query, ignore_unavailable="true", conflicts="proceed"
         )
         if result["version_conflicts"] > 0:
             raise ElasticsearchConflictException(result["version_conflicts"], result)
@@ -378,10 +408,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
     async def _update_by_query(self, query, index_name):
         conn = self.get_connection()
         result = await conn.update_by_query(
-            index_name,
-            body=query,
-            ignore_unavailable="true",
-            conflicts="proceed",
+            index_name, body=query, ignore_unavailable="true", conflicts="proceed"
         )
         if "updated" in result:
             logger.debug(f'Updated {result["updated"]} children')

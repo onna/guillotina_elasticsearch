@@ -306,10 +306,9 @@ class Migrator:
         return new_definitions
 
     async def process_folder(self, ob):
-        txn = get_current_transaction()
         for key in await ob.async_keys():
             try:
-                item = await txn.get_child(ob, key)
+                item = await ob.__txn__.get_child(ob, key)
             except (KeyError, ModuleNotFoundError):
                 continue
             if item is None:
