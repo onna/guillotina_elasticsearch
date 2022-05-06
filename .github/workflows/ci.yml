@@ -27,7 +27,7 @@ jobs:
         run: |
           # Install
           pip install click==8.0.2
-          pip install flake8 isort black==19.3b0
+          pip install flake8 isort black==22.3.0
 
           # Run commands
           flake8 guillotina_elasticsearch --config=setup.cfg
