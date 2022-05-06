@@ -26,6 +26,7 @@ jobs:
       - name: Pre-checks
         run: |
           # Install
+          pip install click==8.0.2
           pip install flake8 isort black==19.3b0
 
           # Run commands
