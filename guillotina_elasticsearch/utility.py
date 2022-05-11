@@ -35,6 +35,7 @@ import backoff
 import elasticsearch.exceptions
 import json
 import logging
+import ssl
 import time
 
 
@@ -54,10 +55,14 @@ class DefaultConnnectionFactoryUtility:
 
     def get(self, loop=None):
         if self._conn is None:
-            self._conn = AsyncElasticsearch(
-                loop=loop,
-                **app_settings.get("elasticsearch", {}).get("connection_settings"),
-            )
+            settings = app_settings.get("elasticsearch", {}).get("connection_settings", {})
+            if settings.get('cacert'):
+                settings['ssl_context'] = ssl.create_default_context(cafile=settings['cacert'])
+            if not settings.get('verify_hostname', True):
+                if 'ssl_context' not in settings:
+                    settings['ssl_context'] = ssl.create_default_context()
+                settings['ssl_context'].check_hostname = False
+            self._conn = AsyncElasticsearch(loop=loop, **settings)
         return self._conn
 
     async def close(self, loop=None):
