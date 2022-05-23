@@ -57,7 +57,7 @@ class Vacuum:
         self.missing = set()
         self.out_of_date = set()
         self.utility = get_utility(ICatalogUtility)
-        self.migrator = Migrator(self.utility, self.container, full=True, bulk_size=10, log_details=True)
+        self.migrator = Migrator(self.utility, self.container, full=True, bulk_size=10)
         self.index_manager = get_adapter(self.container, IIndexManager)
         self.cache = LRU(200)
         self.last_tid = last_tid
@@ -155,7 +155,7 @@ class Vacuum:
             if folder:
                 await self.migrator.process_object(obj)
             else:
-                await self.migrator.index_object(obj)
+                await self.migrator.index_object(obj, full=True)
         except TypeError:
             logger.warning(f"Could not index {oid}", exc_info=True)
 
