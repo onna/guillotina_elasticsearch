@@ -436,7 +436,7 @@ class Migrator:
             action_data = {"_index": index, "_id": _id}
             data = payload["data"]
             if payload["action"] == "update":
-                data = {"doc": data, "doc_as_upsert": True}
+                data = {"doc": data}
                 action_data["retry_on_conflict"] = 3
             bulk_data.append({payload["action"]: action_data})
             if payload["action"] != "delete":
