@@ -57,7 +57,7 @@ class Vacuum:
         self.missing = set()
         self.out_of_date = set()
         self.utility = get_utility(ICatalogUtility)
-        self.migrator = Migrator(self.utility, self.container, full=True, bulk_size=10)
+        self.migrator = Migrator(self.utility, self.container, full=True, bulk_size=10, log_details=True)
         self.index_manager = get_adapter(self.container, IIndexManager)
         self.cache = LRU(200)
         self.last_tid = last_tid
@@ -331,8 +331,6 @@ Missing added: {len(vacuum.missing)}
 Out of date fixed: {len(vacuum.out_of_date)}
 """
                     )
-                    # Call flush, to ensure it's called regardless of current batch size.
-                    vacuum.flush()
                 except Exception:
                     logger.error("Error vacuuming", exc_info=True)
                 finally:

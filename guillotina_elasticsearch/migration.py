@@ -380,6 +380,7 @@ class Migrator:
         self.batch[ob.uuid] = {"action": batch_type, "data": data}
 
         if self.log_details:
+            self.response.write(f"data here: {data}")
             self.response.write(
                 f"({self.processed} {int(self.per_sec())}) "
                 f"Object: {get_content_path(ob)}, "
@@ -441,7 +442,10 @@ class Migrator:
             bulk_data.append({payload["action"]: action_data})
             if payload["action"] != "delete":
                 bulk_data.append(data)
+        logger.warning(f"sending bulk data: {bulk_data}")
         results = await self.conn.bulk(index=self.work_index_name, body=bulk_data)
+        logger.warning(f"bulk request result: {results}")
+
         if results["errors"]:
             errors = []
             for result in results["items"]:
