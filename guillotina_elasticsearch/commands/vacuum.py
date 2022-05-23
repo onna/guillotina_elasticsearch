@@ -155,7 +155,7 @@ class Vacuum:
             if folder:
                 await self.migrator.process_object(obj)
             else:
-                await self.migrator.index_object(obj, full=True)
+                await self.migrator.index_object(obj)
         except TypeError:
             logger.warning(f"Could not index {oid}", exc_info=True)
 
