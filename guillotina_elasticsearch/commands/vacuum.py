@@ -331,6 +331,8 @@ Missing added: {len(vacuum.missing)}
 Out of date fixed: {len(vacuum.out_of_date)}
 """
                     )
+                    # Call flush, to ensure it's called regardless of current batch size.
+                    vacuum.flush()
                 except Exception:
                     logger.error("Error vacuuming", exc_info=True)
                 finally:
