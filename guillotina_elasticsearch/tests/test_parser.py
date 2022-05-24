@@ -102,11 +102,11 @@ async def test_parser_or_operator(es_requester):
         resp, status = await requester(
             "GET", "/db/guillotina/@search?type_name=Item", headers={"X-Wait": "10"}
         )
-        assert resp["items_total"] == 3
+        assert resp["items_count"] == 3
 
         resp, status = await requester(
             "GET",
             "/db/guillotina/@search?type_name=Item&__or=id=foo_item%26id=foo_item2",
             headers={"X-Wait": "10"},
         )
-        assert resp["items_total"] == 2
+        assert resp["items_count"] == 2
