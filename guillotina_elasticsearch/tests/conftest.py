@@ -1,15 +1,16 @@
 from pytest_docker_fixtures import images
 
 
-image_version = "7.5.1"
+image_version = "2.0.0"
 
 images.configure(
     "elasticsearch",
-    "docker.elastic.co/elasticsearch/elasticsearch",
+    "opensearchproject/opensearch",
     image_version,
     max_wait_s=90,
     env={
-        "xpack.security.enabled": None,  # unset
+        "xpack.security.enabled": None,
+        "plugins.security.disabled": "true",
         "discovery.type": "single-node",
         "http.host": "0.0.0.0",
         "transport.host": "127.0.0.1",

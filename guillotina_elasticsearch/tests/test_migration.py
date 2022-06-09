@@ -358,11 +358,11 @@ async def test_search_works_on_new_docs_during_migration(es_requester):
 
         async def _test():
             result1 = await search.get_connection().get(
-                index=next_index_name, doc_type="_all", id=resp["@uid"]
+                index=next_index_name, doc_type="_doc", id=resp["@uid"]
             )
             assert result1 is not None
             result2 = await search.get_connection().get(
-                index=index_name, doc_type="_all", id=resp["@uid"]
+                index=index_name, doc_type="_doc", id=resp["@uid"]
             )
             assert result2 is not None
 
@@ -397,13 +397,13 @@ async def test_search_works_on_updated_docs_during_migration_when_missing(
 
         async def _test():
             result1 = await search.get_connection().get(
-                index=index_name, doc_type="_all", id=resp["@uid"]
+                index=index_name, doc_type="_doc", id=resp["@uid"]
             )
             assert result1 is not None
             assert result1["_source"]["title"] == "Foobar2"
             with pytest.raises(elasticsearch.exceptions.NotFoundError):
                 await search.get_connection().get(
-                    index=next_index_name, doc_type="_all", id=resp["@uid"]
+                    index=next_index_name, doc_type="_doc", id=resp["@uid"]
                 )
 
         await run_with_retries(_test, requester)
@@ -437,12 +437,12 @@ async def test_search_works_on_updated_docs_during_migration_when_present(
 
         async def _test():
             result1 = await search.get_connection().get(
-                index=next_index_name, doc_type="_all", id=resp["@uid"]
+                index=next_index_name, doc_type="_doc", id=resp["@uid"]
             )
             assert result1 is not None
             assert result1["_source"]["title"] == "Foobar2"
             result2 = await search.get_connection().get(
-                index=index_name, doc_type="_all", id=resp["@uid"]
+                index=index_name, doc_type="_doc", id=resp["@uid"]
             )
             assert result2 is not None
             assert result2["_source"]["title"] == "Foobar2"
@@ -469,11 +469,11 @@ async def test_delete_in_both_during_migration(es_requester):
         async def _test():
             with pytest.raises(elasticsearch.exceptions.NotFoundError):
                 await search.get_connection().get(
-                    index=next_index_name, doc_type="_all", id=resp["@uid"]
+                    index=next_index_name, doc_type="_doc", id=resp["@uid"]
                 )
             with pytest.raises(elasticsearch.exceptions.NotFoundError):
                 await search.get_connection().get(
-                    index=index_name, doc_type="_all", id=resp["@uid"]
+                    index=index_name, doc_type="_doc", id=resp["@uid"]
                 )
 
         await run_with_retries(_test, requester)
