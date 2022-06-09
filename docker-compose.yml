@@ -1,12 +1,15 @@
 version: '2'
 services:
-  elasticsearch1:
-    image: elasticsearch:6.7.0
-    container_name: elasticsearch1
+  opensearch:
+    image: opensearchproject/opensearch:2.0.0
+    container_name: opensearch
     environment:
       - cluster.name=docker-cluster
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - http.host=0.0.0.0
+      - transport.host=127.0.0.1
+      - plugins.security.disabled=true
     ulimits:
       memlock:
         soft: -1
@@ -18,7 +21,7 @@ services:
     cap_add:
       - IPC_LOCK
     volumes:
-      - esdata1:/usr/share/elasticsearch/data
+      - esdata1:/usr/share/opensearch/data
     ports:
       - 127.0.0.1:9200:9200
 volumes:

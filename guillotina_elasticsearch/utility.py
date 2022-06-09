@@ -133,20 +133,20 @@ class ElasticSearchUtility(DefaultSearchUtility):
             info = await connection.info()
         except Exception:
             logger.warning(
-                "Could not check current es version. " "Only 6.x and 7.x are supported"
+                "Could not check current search version, only ES 7.x and OS 1.x,2.x are supported."
             )
             return
 
-        es_distribution = info["version"]["distribution"]
-        es_version = info["version"]["number"]
+        s_dist = info["version"]["distribution"]
+        s_version = info["version"]["number"]
 
-        supported_es = es_distribution == "elasticsearch" and es_version.startswith(
-            "7."
-        )
-        supported_os = es_distribution == "opensearch" and es_version.startswith("1.")
-
-        if not (supported_es or supported_os):
-            raise Exception(f"ES cluster version not supported: {es_version}")
+        if not (
+            (s_dist.startswith("el") and s_version.startswith("7."))
+            or (s_dist.startswith("op") and s_version.startswith(("1.", "2.")))
+        ):
+            raise Exception(
+                f"Search cluster version not supported: {s_dist} {s_version}"
+            )
 
     async def initialize_catalog(self, container):
         if not self.enabled:
