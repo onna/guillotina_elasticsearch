@@ -145,11 +145,11 @@ class Vacuum:
 
     async def process_missing(self, oid, index_type="missing", folder=False):
         # need to fill in parents in order for indexing to work...
-        logger.warning(f"Index {index_type} {oid}")
+        logger.warning(f"Index {self.container.id}: {index_type} {oid}")
         try:
             obj = await self.get_object(oid)
         except (AttributeError, KeyError, TypeError, ModuleNotFoundError):
-            logger.warning(f"Could not find {oid}")
+            logger.warning(f"Could not find {self.container.id}: {oid}")
             return  # object or parent of object was removed, ignore
         try:
             if folder:
@@ -157,7 +157,7 @@ class Vacuum:
             else:
                 await self.migrator.index_object(obj)
         except TypeError:
-            logger.warning(f"Could not index {oid}", exc_info=True)
+            logger.warning(f"Could not index {self.container.id}: {oid}", exc_info=True)
 
     async def setup(self):
         # how we're doing this...
@@ -197,12 +197,14 @@ class Vacuum:
                 db_batch.add(record["zoid"])
             orphaned = [k for k in set(es_batch) - db_batch]
             if checked % 10000 == 0:
-                logger.warning(f"Checked ophans: {checked}")
+                logger.warning(f"Checked ophans {self.container.id}: {checked}")
             if orphaned:
                 # these are keys that are in ES but not in DB so we should
                 # remove them..
                 self.orphaned |= set(orphaned)
-                logger.warning(f"deleting orphaned {len(orphaned)}")
+                logger.warning(
+                    f"deleting orphaned {self.container.id}: {len(orphaned)}"
+                )
 
                 # delete by query for orphaned keys...
                 data = await self.conn.delete_by_query(
@@ -210,7 +212,7 @@ class Vacuum:
                 )
                 if data["deleted"] != len(orphaned):
                     logger.warning(
-                        f'Was only able to clean up {len(data["deleted"])} '  # noqa
+                        f'Was only able to clean up {self.container.id}: {len(data["deleted"])} '  # noqa
                         f"instead of {len(orphaned)}"
                     )
 
@@ -273,7 +275,7 @@ class Vacuum:
 
             checked += len(batch)
             logger.warning(
-                f"Checked missing: {checked}: {self.last_tid}, "
+                f"Checked missing: {self.container.id}: {checked}: {self.last_tid}, "
                 f"missing: {len(self.missing)}, out of date: {len(self.out_of_date)}"
             )  # noqa
 

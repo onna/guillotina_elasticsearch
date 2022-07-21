@@ -1,7 +1,12 @@
-7.0.1 (unreleased)
+7.0.2
 ------------------
 
-- Nothing changed yet.
+- Add logging
+
+7.0.1 
+------------------
+
+- ES7 updates
 
 
 7.0.0 (2022-03-16)
