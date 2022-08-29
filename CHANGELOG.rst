@@ -1,7 +1,13 @@
-7.0.1 (unreleased)
+7.0.2 (2022-08-29)
 ------------------
 
-- Nothing changed yet.
+- Allow routing parameter in batch index data
+
+
+7.0.1 (2022-06-09)
+------------------
+
+- Opensearch support.
 
 
 7.0.0 (2022-03-16)
