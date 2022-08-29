@@ -434,6 +434,9 @@ class Migrator:
         for _id, payload in batch.items():
             index = payload.pop("__index__", self.work_index_name)
             action_data = {"_index": index, "_id": _id}
+            routing = payload.pop("routing", None)
+            if routing:
+                action_data["routing"] = routing
             data = payload["data"]
             if payload["action"] == "update":
                 data = {"doc": data}
