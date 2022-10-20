@@ -11,10 +11,16 @@ import guillotina.directives
 CATALOG_TYPES: Dict[str, Any] = {
     "searchabletext": {"type": "text", "index": True},
     "text": {"type": "text", "index": True},
-    "keyword": {"type": "keyword", "index": True},
+    "keyword": {"type": "keyword", "index": True, "eager_global_ordinals": True},
     "textkeyword": {
         "type": "text",
-        "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
+        "fields": {
+            "keyword": {
+                "type": "keyword",
+                "ignore_above": 256,
+                "eager_global_ordinals": True,
+            },
+        },
     },
     "int": {"type": "integer"},
     "date": {"type": "date"},
