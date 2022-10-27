@@ -308,7 +308,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         # Support for "collapse" directive requires cardinality agg on dedupe field.
         dedupe = result.get("aggregations", {}).pop("__deduplicated_search_count__", None)
         if dedupe:
-            final["items_count"] = dedupe["value"]
+            final["deduplicated_count"] = dedupe["value"]
 
         if "aggregations" in result:
             final["aggregations"] = result["aggregations"]
