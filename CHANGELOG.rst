@@ -1,3 +1,8 @@
+7.0.4 (2022-10-26)
+------------------
+
+- Support setting search total hits to cardinality agg for deduplicated searches.
+
 7.0.3 (2022-10-20)
 ------------------
 

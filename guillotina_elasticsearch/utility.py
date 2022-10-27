@@ -305,6 +305,11 @@ class ElasticSearchUtility(DefaultSearchUtility):
         items_total = result["hits"]["total"]["value"]
         final = {"items_count": items_total, "member": items}
 
+        # Support for "collapse" directive requires cardinality agg on dedupe field.
+        dedupe = result.get("aggregations", {}).pop("__deduplicated_search_count__", None)
+        if dedupe:
+            final["items_count"] = dedupe["value"]
+
         if "aggregations" in result:
             final["aggregations"] = result["aggregations"]
         if "suggest" in result:
