@@ -402,7 +402,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         query.update({
             "sort": [{"uuid": "asc"}],
             "_source": False,
-            "fields": ["_id", "uuid"],
+            "fields": ["uuid"],
             "size": 1000,
         })
         conn = self.get_connection()
