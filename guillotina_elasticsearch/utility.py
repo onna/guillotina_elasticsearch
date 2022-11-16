@@ -256,6 +256,18 @@ class ElasticSearchUtility(DefaultSearchUtility):
             items.append(data)
         return items
 
+    @staticmethod
+    async def _check_search_errors(result):
+        if not result.get("_shards", {}).get("failed", 0) > 0:
+            return
+        logger.warning(f'Error running query: {result["_shards"]}')
+        error_message = "Unknown"
+        for failure in result["_shards"].get("failures") or []:
+            error_message = failure["reason"]
+        logger.error(f"Search failed with error: {error_message}")
+        raise QueryErrorException(content={"reason": "search failed"})
+
+
     async def search_raw(
         self,
         context,
@@ -294,13 +306,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         conn = self.get_connection()
 
         result = await conn.search(index=index, **q)
-        if result.get("_shards", {}).get("failed", 0) > 0:
-            logger.warning(f'Error running query: {result["_shards"]}')
-            error_message = "Unknown"
-            for failure in result["_shards"].get("failures") or []:
-                error_message = failure["reason"]
-            logger.error(f"Search failed with error: {error_message}")
-            raise QueryErrorException(content={"reason": "search failed"})
+        await self._check_search_errors(result)
         items = self._get_items_from_result(container, request, result)
         items_total = result["hits"]["total"]["value"]
         final = {"items_count": items_total, "member": items}
@@ -391,21 +397,56 @@ class ElasticSearchUtility(DefaultSearchUtility):
         path_query = await self.get_path_query(content_path)
         await self._delete_by_query(path_query, index_name)
 
+    async def _action_by_query_batch(self, index_name, request):
+        query = None
+        if request.get("query"):
+            query = {"query": request["query"]}
+        else:
+            query = {"query": {"match_all": {}}}
+        query.update({
+            "sort": [{"uuid": "asc"}],
+            "_source": False,
+            "fields": ["uuid"],
+            "size": 1000,
+        })
+        conn = self.get_connection()
+        result = await conn.search(index=index_name, body=query)
+        await self._check_search_errors(result)
+        while result["hits"]["hits"]:
+            uuids = []
+            yield [
+                hit["fields"]["uuid"][0]
+                for hit in result["hits"]["hits"]
+                if (hit.get("fields", {}).get("uuid", [None]) or [None])[0]
+            ]
+            if len(result["hits"]["hits"]) < 1000:
+                break
+            query.update({"search_after": result["hits"]["hits"][-1]["sort"]})
+            result = await conn.search(index=index_name, body=query)
+
     @backoff.on_exception(
         backoff.constant, (ElasticsearchConflictException,), interval=0.5, max_tries=5
     )
     async def _delete_by_query(self, path_query, index_name):
         conn = self.get_connection()
-        result = await conn.delete_by_query(
-            index_name, body=path_query, ignore_unavailable="true", conflicts="proceed"
-        )
-        if result["version_conflicts"] > 0:
-            raise ElasticsearchConflictException(result["version_conflicts"], result)
-        if "deleted" in result:
-            logger.debug(f'Deleted {result["deleted"]} children')
-            logger.debug(f"Deleted {json.dumps(path_query)}")
-        else:
-            self.log_result(result, "Deletion of children")
+        async for batch in self._action_by_query_batch(index_name, path_query):
+            delete_query = {
+                "query": {
+                    "terms": {
+                        "uuid": batch,
+                    },
+                },
+            }
+            result = await conn.delete_by_query(
+                index_name, body=delete_query, ignore_unavailable="true", conflicts="proceed"
+            )
+            if result["version_conflicts"] > 0:
+                raise ElasticsearchConflictException(result["version_conflicts"], result)
+            if "deleted" in result:
+                logger.debug(f'Deleted {result["deleted"]} children')
+                logger.debug(f"Deleted {json.dumps(path_query)}")
+            else:
+                self.log_result(result, "Deletion of children")
 
     async def update_by_query(self, query, context=None, indexes=None):
         if indexes is None:
@@ -421,15 +462,33 @@ class ElasticSearchUtility(DefaultSearchUtility):
     )
     async def _update_by_query(self, query, index_name):
         conn = self.get_connection()
-        result = await conn.update_by_query(
-            index_name, body=query, ignore_unavailable="true", conflicts="proceed"
-        )
-        if "updated" in result:
-            logger.debug(f'Updated {result["updated"]} children')
-            logger.debug(f"Updated {json.dumps(query)} ")
-        else:
-            self.log_result(result, "Updating children")
-        return result
+        updated = 0
+        async for batch in self._action_by_query_batch(index_name, query):
+            update_query = {
+                **{
+                    "query": {
+                        "terms": {
+                            "uuid": batch,
+                        },
+                    },
+                },
+                **{
+                    k: v
+                    for k, v in query.items()
+                    # Ignore some fields, for performance reasons.
+                    if k not in ("query", "max_docs", "scroll", "scroll_size")
+                },
+            }
+            result = await conn.update_by_query(
+                index_name, body=update_query, ignore_unavailable="true", conflicts="proceed"
+            )
+            if "updated" in result:
+                logger.debug(f'Updated {result["updated"]} children')
+                logger.debug(f"Updated {json.dumps(query)} ")
+                updated += result["updated"]
+            else:
+                self.log_result(result, "Updating children")
+        return {"updated": updated}
 
     @backoff.on_exception(
         backoff.constant,
