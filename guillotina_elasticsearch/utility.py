@@ -398,7 +398,11 @@ class ElasticSearchUtility(DefaultSearchUtility):
         await self._delete_by_query(path_query, index_name)
 
     async def _action_by_query_batch(self, index_name, request):
-        query = {"query": request["query"]}
+        query = None
+        if request.get("query"):
+            query = {"query": request["query"]}
+        else:
+            query = {"query": {"match_all": {}}}
         query.update({
             "sort": [{"uuid": "asc"}],
             "_source": False,
