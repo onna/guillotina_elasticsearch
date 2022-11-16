@@ -397,17 +397,17 @@ class ElasticSearchUtility(DefaultSearchUtility):
         path_query = await self.get_path_query(content_path)
         await self._delete_by_query(path_query, index_name)
 
-    async def _action_by_query_batch(index_name, request):
-        query = request["query"]
+    async def _action_by_query_batch(self, index_name, request):
+        query = {"query": request["query"]}
         query.update({
-            "sort": [{"field": "uuid", "direction": "asc"}],
+            "sort": [{"uuid": "asc"}],
             "_source": False,
             "fields": ["_id", "uuid"],
             "size": 1000,
         })
         conn = self.get_connection()
         result = await conn.search(index=index_name, body=query)
-        await _check_search_errors(result)
+        await self._check_search_errors(result)
         while result["hits"]["hits"]:
             uuids = []
             yield [
@@ -425,7 +425,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
     )
     async def _delete_by_query(self, path_query, index_name):
         conn = self.get_connection()
-        async for batch in _action_by_query_batch(index_name, path_query):
+        async for batch in self._action_by_query_batch(index_name, path_query):
             delete_query = {
                 "query": {
                     "terms": {
@@ -459,7 +459,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
     async def _update_by_query(self, query, index_name):
         conn = self.get_connection()
         updated = 0
-        async for batch in _action_by_query_batch(index_name, path_query):
+        async for batch in self._action_by_query_batch(index_name, query):
             update_query = {
                 **{
                     "query": {
