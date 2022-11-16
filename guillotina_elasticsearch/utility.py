@@ -429,6 +429,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
     )
     async def _delete_by_query(self, path_query, index_name):
         conn = self.get_connection()
+        deleted = 0
         async for batch in self._action_by_query_batch(index_name, path_query):
             delete_query = {
                 "query": {
@@ -445,8 +446,10 @@ class ElasticSearchUtility(DefaultSearchUtility):
             if "deleted" in result:
                 logger.debug(f'Deleted {result["deleted"]} children')
                 logger.debug(f"Deleted {json.dumps(path_query)}")
+                deleted += result["deleted"]
             else:
                 self.log_result(result, "Deletion of children")
+        return {"deleted": deleted}
 
     async def update_by_query(self, query, context=None, indexes=None):
         if indexes is None:
