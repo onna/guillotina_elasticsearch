@@ -425,7 +425,10 @@ class ElasticSearchUtility(DefaultSearchUtility):
             result = await conn.search(index=index_name, body=query)
 
     @backoff.on_exception(
-        backoff.constant, (ElasticsearchConflictException,), interval=0.5, max_tries=5
+        backoff.constant,
+        (asyncio.TimeoutError, elasticsearch.exceptions.ConnectionTimeout, ElasticsearchConflictException),
+        interval=1,
+        max_tries=5
     )
     async def _delete_by_query(self, path_query, index_name):
         conn = self.get_connection()
@@ -439,16 +442,22 @@ class ElasticSearchUtility(DefaultSearchUtility):
                 },
             }
             result = await conn.delete_by_query(
-                index_name, body=delete_query, ignore_unavailable="true", conflicts="proceed"
+                index_name, body=delete_query, ignore_unavailable="true", conflicts="proceed", refresh=True
             )
-            if result["version_conflicts"] > 0:
-                raise ElasticsearchConflictException(result["version_conflicts"], result)
-            if "deleted" in result:
-                logger.debug(f'Deleted {result["deleted"]} children')
-                logger.debug(f"Deleted {json.dumps(path_query)}")
-                deleted += result["deleted"]
-            else:
-                self.log_result(result, "Deletion of children")
+            current_deleted = result.get("deleted", 0)
+            attempt = 0
+            while result["version_conflicts"] > 0:
+                attempt += 1
+                if attempt > 5:
+                    raise ElasticsearchConflictException(result["version_conflicts"], result)
+                logger.warning(f"Version conflict in delete_by_query: {result['version_conflicts']}")
+                result = await conn.delete_by_query(
+                    index_name, body=delete_query, ignore_unavailable="true", conflicts="proceed", refresh=True
+                )
+                current_deleted += result.get("deleted", 0)
+            logger.debug(f'Deleted {current_deleted} children')
+            logger.debug(f"Deleted {json.dumps(path_query)}")
+            deleted += current_deleted
         return {"deleted": deleted}
 
     async def update_by_query(self, query, context=None, indexes=None):
@@ -483,7 +492,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
                 },
             }
             result = await conn.update_by_query(
-                index_name, body=update_query, ignore_unavailable="true", conflicts="proceed"
+                index_name, body=update_query, ignore_unavailable="true", conflicts="proceed", refresh=True
             )
             if "updated" in result:
                 logger.debug(f'Updated {result["updated"]} children')
