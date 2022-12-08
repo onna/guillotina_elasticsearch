@@ -453,7 +453,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
                 body=delete_query,
                 ignore_unavailable="true",
                 conflicts="proceed",
-                refresh=True,
+                refresh=False,
             )
             current_deleted = result.get("deleted", 0)
             attempt = 0
@@ -471,7 +471,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
                     body=delete_query,
                     ignore_unavailable="true",
                     conflicts="proceed",
-                    refresh=True,
+                    refresh=False,
                 )
                 current_deleted += result.get("deleted", 0)
             logger.debug(f"Deleted {current_deleted} children")
