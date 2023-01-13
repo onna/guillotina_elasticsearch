@@ -37,8 +37,8 @@ jobs:
       # Run tests
       - name: Run tests
         run: |
-          # Install package with test dependecies
-          pip install -e .[test]
+          # Install package with test dependencies
+          pip install -e ".[test]"
 
           # Run tests
           pytest --capture=no --tb=native -v guillotina_elasticsearch --cov=guillotina_elasticsearch --cov-report term-missing --cov-append guillotina_elasticsearch
