@@ -9,7 +9,7 @@ test_requires = [
     "pytest-asyncio",
     "coverage",
     "pytest-cov",
-    "pytest-docker-fixtures[pg]>=1.3.0",
+    "pytest-docker-fixtures",
     "prometheus-client>=0.9.0",  # TODO: remove
 ]
 

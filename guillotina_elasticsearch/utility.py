@@ -416,7 +416,6 @@ class ElasticSearchUtility(DefaultSearchUtility):
         result = await conn.search(index=index_name, body=query)
         await self._check_search_errors(result)
         while result["hits"]["hits"]:
-            uuids = []
             yield [
                 hit["fields"]["uuid"][0]
                 for hit in result["hits"]["hits"]
