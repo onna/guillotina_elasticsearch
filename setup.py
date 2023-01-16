@@ -36,7 +36,7 @@ setup(
     package_data={"": ["*.txt", "*.rst"], "guillotina_elasticsearch": ["py.typed"]},
     packages=find_packages(exclude=["ez_setup"]),
     install_requires=[
-        "guillotina>=6.0.0a16",
+        "guillotina>=5.0",
         "elasticsearch[async]>=7.8.0,<7.14",
         "mypy_extensions",
         "lru-dict",
