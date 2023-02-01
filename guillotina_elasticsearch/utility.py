@@ -408,7 +408,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
             {
                 "sort": [{"uuid": "asc"}],
                 "_source": False,
-                "fields": ["uuid"],
+                "fields": ["_id"],
                 "size": 1000,
             }
         )
@@ -416,11 +416,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         result = await conn.search(index=index_name, body=query)
         await self._check_search_errors(result)
         while result["hits"]["hits"]:
-            yield [
-                hit["fields"]["uuid"][0]
-                for hit in result["hits"]["hits"]
-                if (hit.get("fields", {}).get("uuid", [None]) or [None])[0]
-            ]
+            yield [hit["_id"] for hit in result["hits"]["hits"]]
             if len(result["hits"]["hits"]) < 1000:
                 break
             query.update({"search_after": result["hits"]["hits"][-1]["sort"]})
@@ -443,7 +439,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
             delete_query = {
                 "query": {
                     "terms": {
-                        "uuid": batch,
+                        "_id": batch,
                     },
                 },
             }
@@ -498,7 +494,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
                 **{
                     "query": {
                         "terms": {
-                            "uuid": batch,
+                            "_id": batch,
                         },
                     },
                 },
