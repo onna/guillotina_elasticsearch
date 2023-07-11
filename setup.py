@@ -40,7 +40,8 @@ setup(
         "elasticsearch[async]>=7.8.0,<7.14",
         "mypy_extensions",
         "lru-dict",
-        "backoff"
+        "backoff",
+        "zope.interface>=5.0.1,<6",
     ],
     tests_require=test_requires,
     extras_require={"test": test_requires},
