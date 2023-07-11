@@ -436,42 +436,16 @@ class ElasticSearchUtility(DefaultSearchUtility):
         conn = self.get_connection()
         deleted = 0
         async for batch in self._action_by_query_batch(index_name, path_query):
-            delete_query = {
-                "query": {
-                    "terms": {
-                        "_id": batch,
-                    },
-                },
-            }
-            result = await conn.delete_by_query(
-                index_name,
-                body=delete_query,
-                ignore_unavailable="true",
-                conflicts="proceed",
-                refresh=False,
+            delete_body = "\n".join(
+                [
+                    json.dumps({"delete": {"_index": index_name, "_id": _id}})
+                    for _id in batch
+                ]
             )
-            current_deleted = result.get("deleted", 0)
-            attempt = 0
-            while result["version_conflicts"] > 0:
-                attempt += 1
-                if attempt > 5:
-                    raise ElasticsearchConflictException(
-                        result["version_conflicts"], result
-                    )
-                logger.warning(
-                    f"Version conflict in delete_by_query: {result['version_conflicts']}"
-                )
-                result = await conn.delete_by_query(
-                    index_name,
-                    body=delete_query,
-                    ignore_unavailable="true",
-                    conflicts="proceed",
-                    refresh=False,
-                )
-                current_deleted += result.get("deleted", 0)
-            logger.debug(f"Deleted {current_deleted} children")
-            logger.debug(f"Deleted {json.dumps(path_query)}")
-            deleted += current_deleted
+            results = await self.conn.bulk(index=index_name, body=delete_body)
+            for item in result.get("items", []):
+                if item.get("delete", {}).get("result") == "deleted":
+                    deleted += 1
         return {"deleted": deleted}
 
     async def update_by_query(self, query, context=None, indexes=None):
@@ -491,13 +465,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         updated = 0
         async for batch in self._action_by_query_batch(index_name, query):
             update_query = {
-                **{
-                    "query": {
-                        "terms": {
-                            "_id": batch,
-                        },
-                    },
-                },
+                **{"query": {"terms": {"_id": batch}}},
                 **{
                     k: v
                     for k, v in query.items()
