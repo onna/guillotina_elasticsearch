@@ -442,8 +442,8 @@ class ElasticSearchUtility(DefaultSearchUtility):
                     for _id in batch
                 ]
             )
-            results = await self.conn.bulk(index=index_name, body=delete_body)
-            for item in result.get("items", []):
+            results = await conn.bulk(index=index_name, body=delete_body)
+            for item in results.get("items", []):
                 if item.get("delete", {}).get("result") == "deleted":
                     deleted += 1
         return {"deleted": deleted}
