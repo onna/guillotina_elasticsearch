@@ -416,7 +416,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         result = await conn.search(index=index_name, body=query)
         await self._check_search_errors(result)
         while result["hits"]["hits"]:
-            yield [hit["_id"] for hit in result["hits"]["hits"]]
+            yield [(hit["_id"], hit.get("_routing")) for hit in result["hits"]["hits"]]
             if len(result["hits"]["hits"]) < 1000:
                 break
             query.update({"search_after": result["hits"]["hits"][-1]["sort"]})
@@ -436,12 +436,13 @@ class ElasticSearchUtility(DefaultSearchUtility):
         conn = self.get_connection()
         deleted = 0
         async for batch in self._action_by_query_batch(index_name, path_query):
-            delete_body = "\n".join(
-                [
-                    json.dumps({"delete": {"_index": index_name, "_id": _id}})
-                    for _id in batch
-                ]
-            )
+            recs = []
+            for _id, _routing in batch:
+                rec = {"_index": index_name, "_id": _id}
+                if _routing:
+                    rec["routing"] = _routing
+                recs.append(json.dumps({"delete": rec}))
+            delete_body = "\n".join(recs)
             results = await conn.bulk(index=index_name, body=delete_body)
             for item in results.get("items", []):
                 if item.get("delete", {}).get("result") == "deleted":
@@ -465,7 +466,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         updated = 0
         async for batch in self._action_by_query_batch(index_name, query):
             update_query = {
-                **{"query": {"terms": {"_id": batch}}},
+                **{"query": {"terms": {"_id": [_id for _id, _ in batch]}}},
                 **{
                     k: v
                     for k, v in query.items()
