@@ -37,7 +37,7 @@ setup(
     packages=find_packages(exclude=["ez_setup"]),
     install_requires=[
         "guillotina>=5.0",
-        "elasticsearch[async]>=7.8.0,<7.14",
+        "opensearch-py>=2.2.0",
         "mypy_extensions",
         "lru-dict",
         "backoff",

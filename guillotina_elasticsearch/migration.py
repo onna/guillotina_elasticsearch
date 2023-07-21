@@ -1,4 +1,4 @@
-from elasticsearch import AsyncElasticsearch
+from opensearchpy import AsyncOpenSearch
 from guillotina import directives
 from guillotina.catalog.catalog import DefaultCatalogDataAdapter
 from guillotina.component import get_adapter
@@ -28,7 +28,7 @@ from guillotina_elasticsearch.utils import noop_response
 
 import asyncio
 import backoff
-import elasticsearch.exceptions
+import opensearchpy.exceptions
 import gc
 import json
 import logging
@@ -166,7 +166,7 @@ class Migrator:
 
         self.request = request
         self.container = get_current_container()
-        self.conn: AsyncElasticsearch = utility.get_connection()
+        self.conn: AsyncOpenSearch = utility.get_connection()
 
         if index_manager is None:
             self.index_manager = get_adapter(self.container, IIndexManager)
@@ -288,7 +288,7 @@ class Migrator:
         existing_index_name = await self.index_manager.get_real_index_name()
         try:
             existing_mappings = await self.conn.indices.get_mapping(existing_index_name)
-        except elasticsearch.exceptions.NotFoundError:
+        except opensearchpy.exceptions.NotFoundError:
             # allows us to upgrade when no index is present yet
             return next_mappings
 
@@ -425,7 +425,7 @@ class Migrator:
 
     @backoff.on_exception(
         backoff.constant,
-        (asyncio.TimeoutError, elasticsearch.exceptions.ConnectionTimeout),
+        (asyncio.TimeoutError, opensearchpy.exceptions.ConnectionTimeout),
         interval=1,
         max_tries=5,
     )
@@ -493,7 +493,7 @@ class Migrator:
                     await self.attempt_flush()
                     # no longer present on db, this was orphaned
                     self.orphaned.append(uuid)
-                except elasticsearch.exceptions.NotFoundError:
+                except opensearchpy.exceptions.NotFoundError:
                     # it was deleted in the meantime so we're actually okay
                     self.orphaned.append(uuid)
             else:
@@ -544,12 +544,12 @@ class Migrator:
             try:
                 await self.copy_to_next_index()
                 self.response.write("Copying initial index data finished")
-            except elasticsearch.exceptions.NotFoundError:
+            except opensearchpy.exceptions.NotFoundError:
                 self.response.write("No initial index to copy to")
         if not self.mapping_only:
             try:
                 self.existing = await self.get_all_uids()
-            except elasticsearch.exceptions.NotFoundError:
+            except opensearchpy.exceptions.NotFoundError:
                 pass
 
             self.index_start_time = time.time()
@@ -594,7 +594,7 @@ class Migrator:
                         ]
                     }
                 )
-            except elasticsearch.exceptions.NotFoundError:
+            except opensearchpy.exceptions.NotFoundError:
                 await self.conn.indices.update_aliases(
                     {
                         "actions": [
@@ -612,5 +612,5 @@ class Migrator:
             await self.conn.indices.close(existing_index)
             await self.conn.indices.delete(existing_index)
             self.response.write("Old index deleted")
-        except elasticsearch.exceptions.NotFoundError:
+        except opensearchpy.exceptions.NotFoundError:
             pass

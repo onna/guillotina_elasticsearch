@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from elasticsearch import AsyncElasticsearch
+from opensearchpy import AsyncOpenSearch
 from guillotina import app_settings
 from guillotina import configure
 from guillotina.catalog.catalog import DefaultSearchUtility
@@ -32,7 +32,7 @@ from guillotina_elasticsearch.utils import safe_es_call
 
 import asyncio
 import backoff
-import elasticsearch.exceptions
+import opensearchpy.exceptions
 import json
 import logging
 import ssl
@@ -66,7 +66,7 @@ class DefaultConnnectionFactoryUtility:
                 if "ssl_context" not in settings:
                     settings["ssl_context"] = ssl.create_default_context()
                 settings["ssl_context"].check_hostname = False
-            self._conn = AsyncElasticsearch(loop=loop, **settings)
+            self._conn = AsyncOpenSearch(loop=loop, **settings)
         return self._conn
 
     async def close(self, loop=None):
@@ -110,7 +110,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         # b/w compat
         return self.get_connection()
 
-    def get_connection(self) -> AsyncElasticsearch:
+    def get_connection(self) -> AsyncOpenSearch:
         if self._conn_util is None:
             self._conn_util = get_utility(IConnectionFactoryUtility)
         return self._conn_util.get(loop=self.loop)
@@ -390,7 +390,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
 
     @backoff.on_exception(
         backoff.constant,
-        (asyncio.TimeoutError, elasticsearch.exceptions.ConnectionTimeout),
+        (asyncio.TimeoutError, opensearchpy.exceptions.ConnectionTimeout),
         interval=1,
         max_tries=5,
     )
@@ -426,7 +426,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         backoff.constant,
         (
             asyncio.TimeoutError,
-            elasticsearch.exceptions.ConnectionTimeout,
+            opensearchpy.exceptions.ConnectionTimeout,
             ElasticsearchConflictException,
         ),
         interval=1,
@@ -457,7 +457,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
 
     @backoff.on_exception(
         backoff.constant,
-        (asyncio.TimeoutError, elasticsearch.exceptions.ConnectionTimeout),
+        (asyncio.TimeoutError, opensearchpy.exceptions.ConnectionTimeout),
         interval=1,
         max_tries=5,
     )
@@ -490,7 +490,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
 
     @backoff.on_exception(
         backoff.constant,
-        (asyncio.TimeoutError, elasticsearch.exceptions.ConnectionTimeout),
+        (asyncio.TimeoutError, opensearchpy.exceptions.ConnectionTimeout),
         interval=1,
         max_tries=5,
     )
@@ -500,7 +500,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         try:
             response.write(b"Indexing %d" % (len(idents),))
             result = await conn.bulk(body=bulk_data, refresh=self._refresh())
-        except elasticsearch.exceptions.TransportError as e:
+        except opensearchpy.exceptions.TransportError as e:
             count += 1
             if count > MAX_RETRIES_ON_REINDEX:
                 response.write(b"Could not index %s\n" % str(e).encode("utf-8"))

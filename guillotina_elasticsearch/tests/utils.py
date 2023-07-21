@@ -1,4 +1,4 @@
-from elasticsearch import AsyncElasticsearch
+from opensearchpy import AsyncOpenSearch
 from guillotina import app_settings
 from guillotina import task_vars
 from guillotina.component import get_utility
@@ -7,7 +7,7 @@ from guillotina.tests import utils
 from guillotina.tests.utils import get_container
 
 import asyncio
-import elasticsearch.exceptions
+import opensearchpy.exceptions
 import json
 import time
 
@@ -65,8 +65,8 @@ async def run_with_retries(func, requester=None, timeout=10, retry_wait=0.5):
         except (
             AssertionError,
             KeyError,
-            elasticsearch.exceptions.NotFoundError,
-            elasticsearch.exceptions.TransportError,
+            opensearchpy.exceptions.NotFoundError,
+            opensearchpy.exceptions.TransportError,
             Failed,
         ) as ex:
             exception = ex
@@ -82,7 +82,7 @@ async def run_with_retries(func, requester=None, timeout=10, retry_wait=0.5):
 
 
 async def cleanup_es(es_host, prefix=""):
-    conn = AsyncElasticsearch(**app_settings["elasticsearch"]["connection_settings"])
+    conn = AsyncOpenSearch(**app_settings["elasticsearch"]["connection_settings"])
     for alias in (await conn.cat.aliases()).splitlines():
         name, index = alias.split()[:2]
         if name[0] == "." or index[0] == ".":
@@ -93,8 +93,8 @@ async def cleanup_es(es_host, prefix=""):
                 await conn.indices.delete_alias(index, name)
                 await conn.indices.delete(index)
             except (
-                elasticsearch.exceptions.AuthorizationException,
-                elasticsearch.exceptions.NotFoundError,
+                opensearchpy.exceptions.AuthorizationException,
+                opensearchpy.exceptions.NotFoundError,
             ):
                 pass
     for index in (await conn.cat.indices()).splitlines():
@@ -105,5 +105,5 @@ async def cleanup_es(es_host, prefix=""):
         if index_name.startswith(prefix):
             try:
                 await conn.indices.delete(index_name)
-            except elasticsearch.exceptions.AuthorizationException:
+            except opensearchpy.exceptions.AuthorizationException:
                 pass

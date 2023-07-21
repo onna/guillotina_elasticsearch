@@ -1,4 +1,4 @@
-from elasticsearch import exceptions
+from opensearchpy import exceptions
 from guillotina.component import get_adapter
 from guillotina.component import get_utilities_for
 from guillotina.content import get_all_possible_schemas_for_type

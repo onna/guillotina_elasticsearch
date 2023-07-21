@@ -16,7 +16,7 @@ from guillotina_elasticsearch.tests.utils import run_with_retries
 from guillotina_elasticsearch.tests.utils import setup_txn_on_container
 
 import asyncio
-import elasticsearch
+import opensearchpy
 import json
 import pytest
 import random
@@ -101,7 +101,7 @@ async def test_removes_orphans(es_requester):
         await migrator.run_migration()
 
         async def _test():
-            with pytest.raises(elasticsearch.exceptions.NotFoundError):
+            with pytest.raises(opensearchpy.exceptions.NotFoundError):
                 await search.get_connection().get(index=index_name, id="foobar")
 
             assert len(migrator.orphaned) == 1
@@ -358,11 +358,11 @@ async def test_search_works_on_new_docs_during_migration(es_requester):
 
         async def _test():
             result1 = await search.get_connection().get(
-                index=next_index_name, doc_type="_doc", id=resp["@uid"]
+                index=next_index_name, id=resp["@uid"]
             )
             assert result1 is not None
             result2 = await search.get_connection().get(
-                index=index_name, doc_type="_doc", id=resp["@uid"]
+                index=index_name, id=resp["@uid"]
             )
             assert result2 is not None
 
@@ -397,13 +397,13 @@ async def test_search_works_on_updated_docs_during_migration_when_missing(
 
         async def _test():
             result1 = await search.get_connection().get(
-                index=index_name, doc_type="_doc", id=resp["@uid"]
+                index=index_name, id=resp["@uid"]
             )
             assert result1 is not None
             assert result1["_source"]["title"] == "Foobar2"
-            with pytest.raises(elasticsearch.exceptions.NotFoundError):
+            with pytest.raises(opensearchpy.exceptions.NotFoundError):
                 await search.get_connection().get(
-                    index=next_index_name, doc_type="_doc", id=resp["@uid"]
+                    index=next_index_name, id=resp["@uid"]
                 )
 
         await run_with_retries(_test, requester)
@@ -437,12 +437,12 @@ async def test_search_works_on_updated_docs_during_migration_when_present(
 
         async def _test():
             result1 = await search.get_connection().get(
-                index=next_index_name, doc_type="_doc", id=resp["@uid"]
+                index=next_index_name, id=resp["@uid"]
             )
             assert result1 is not None
             assert result1["_source"]["title"] == "Foobar2"
             result2 = await search.get_connection().get(
-                index=index_name, doc_type="_doc", id=resp["@uid"]
+                index=index_name, id=resp["@uid"]
             )
             assert result2 is not None
             assert result2["_source"]["title"] == "Foobar2"
@@ -467,13 +467,13 @@ async def test_delete_in_both_during_migration(es_requester):
         await requester("DELETE", "/db/guillotina/foobar")
 
         async def _test():
-            with pytest.raises(elasticsearch.exceptions.NotFoundError):
+            with pytest.raises(opensearchpy.exceptions.NotFoundError):
                 await search.get_connection().get(
-                    index=next_index_name, doc_type="_doc", id=resp["@uid"]
+                    index=next_index_name, id=resp["@uid"]
                 )
-            with pytest.raises(elasticsearch.exceptions.NotFoundError):
+            with pytest.raises(opensearchpy.exceptions.NotFoundError):
                 await search.get_connection().get(
-                    index=index_name, doc_type="_doc", id=resp["@uid"]
+                    index=index_name, id=resp["@uid"]
                 )
 
         await run_with_retries(_test, requester)

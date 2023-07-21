@@ -1,4 +1,4 @@
-from elasticsearch import AsyncElasticsearch
+from opensearchpy import AsyncOpenSearch
 from guillotina import task_vars
 from guillotina.commands import Command
 from guillotina.commands.utils import change_transaction_strategy
@@ -16,7 +16,7 @@ from guillotina_elasticsearch.migration import Migrator
 from lru import LRU  # pylint: disable=E0611
 
 import asyncio
-import elasticsearch
+import opensearchpy
 import logging
 
 
@@ -65,7 +65,7 @@ class Vacuum:
         self.last_zoid = None
         # for state tracking so we get boundries right
         self.last_result_set = []
-        self.conn: AsyncElasticsearch = self.utility.get_connection()
+        self.conn: AsyncOpenSearch = self.utility.get_connection()
 
     def get_sql(self, source):
         storage = self.txn._manager._storage
@@ -83,14 +83,14 @@ class Vacuum:
                     _source=False,
                     body={"sort": ["_doc"]},
                 )
-            except elasticsearch.exceptions.NotFoundError:
+            except opensearchpy.exceptions.NotFoundError:
                 continue
             yield [r["_id"] for r in result["hits"]["hits"]], index_name
             scroll_id = result["_scroll_id"]
             while scroll_id:
                 try:
                     result = await self.conn.scroll(scroll_id=scroll_id, scroll="5m")
-                except elasticsearch.exceptions.TransportError:
+                except opensearchpy.exceptions.TransportError:
                     # no results
                     break
                 if len(result["hits"]["hits"]) == 0:
@@ -240,7 +240,7 @@ class Vacuum:
                     stored_fields="tid,parent_uuid",
                     size=PAGE_SIZE,
                 )
-            except elasticsearch.exceptions.NotFoundError:
+            except opensearchpy.exceptions.NotFoundError:
                 logger.warning(
                     f"Error searching index: {self.index_name}", exc_info=True
                 )
