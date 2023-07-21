@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from opensearchpy import AsyncOpenSearch
 from guillotina import app_settings
 from guillotina import configure
 from guillotina.catalog.catalog import DefaultSearchUtility
@@ -29,12 +28,13 @@ from guillotina_elasticsearch.utils import format_hit
 from guillotina_elasticsearch.utils import get_migration_lock
 from guillotina_elasticsearch.utils import noop_response
 from guillotina_elasticsearch.utils import safe_es_call
+from opensearchpy import AsyncOpenSearch
 
 import asyncio
 import backoff
-import opensearchpy.exceptions
 import json
 import logging
+import opensearchpy.exceptions
 import ssl
 import time
 

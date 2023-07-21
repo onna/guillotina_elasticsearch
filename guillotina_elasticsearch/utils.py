@@ -1,4 +1,3 @@
-from opensearchpy import exceptions
 from guillotina.component import get_adapter
 from guillotina.component import get_utilities_for
 from guillotina.content import get_all_possible_schemas_for_type
@@ -6,6 +5,7 @@ from guillotina.content import IResourceFactory
 from guillotina.schema.interfaces import ICollection
 from guillotina_elasticsearch.interfaces import IIndexManager
 from guillotina_elasticsearch.interfaces import SUB_INDEX_SEPERATOR
+from opensearchpy import exceptions
 
 import asyncio
 import guillotina.directives

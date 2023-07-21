@@ -1,4 +1,3 @@
-from opensearchpy import AsyncOpenSearch
 from guillotina import task_vars
 from guillotina.commands import Command
 from guillotina.commands.utils import change_transaction_strategy
@@ -14,10 +13,11 @@ from guillotina.utils import get_object_by_uid
 from guillotina_elasticsearch.interfaces import IIndexManager
 from guillotina_elasticsearch.migration import Migrator
 from lru import LRU  # pylint: disable=E0611
+from opensearchpy import AsyncOpenSearch
 
 import asyncio
-import opensearchpy
 import logging
+import opensearchpy
 
 
 logger = logging.getLogger("guillotina_elasticsearch_vacuum")

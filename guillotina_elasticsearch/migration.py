@@ -1,4 +1,3 @@
-from opensearchpy import AsyncOpenSearch
 from guillotina import directives
 from guillotina.catalog.catalog import DefaultCatalogDataAdapter
 from guillotina.component import get_adapter
@@ -25,13 +24,14 @@ from guillotina_elasticsearch.events import IndexProgress
 from guillotina_elasticsearch.interfaces import IIndexManager
 from guillotina_elasticsearch.utils import get_migration_lock
 from guillotina_elasticsearch.utils import noop_response
+from opensearchpy import AsyncOpenSearch
 
 import asyncio
 import backoff
-import opensearchpy.exceptions
 import gc
 import json
 import logging
+import opensearchpy.exceptions
 import resource
 import time
 

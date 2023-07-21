@@ -16,8 +16,8 @@ from guillotina_elasticsearch.tests.utils import run_with_retries
 from guillotina_elasticsearch.tests.utils import setup_txn_on_container
 
 import asyncio
-import opensearchpy
 import json
+import opensearchpy
 import pytest
 import random
 
@@ -472,8 +472,6 @@ async def test_delete_in_both_during_migration(es_requester):
                     index=next_index_name, id=resp["@uid"]
                 )
             with pytest.raises(opensearchpy.exceptions.NotFoundError):
-                await search.get_connection().get(
-                    index=index_name, id=resp["@uid"]
-                )
+                await search.get_connection().get(index=index_name, id=resp["@uid"])
 
         await run_with_retries(_test, requester)

@@ -19,7 +19,7 @@ CATALOG_TYPES: Dict[str, Any] = {
                 "type": "keyword",
                 "ignore_above": 256,
                 "eager_global_ordinals": True,
-            },
+            }
         },
     },
     "int": {"type": "integer"},

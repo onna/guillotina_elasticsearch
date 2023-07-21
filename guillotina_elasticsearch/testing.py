@@ -1,10 +1,10 @@
-from opensearchpy import AsyncOpenSearch
 from guillotina import app_settings
 from guillotina import configure
 from guillotina import task_vars
 from guillotina.exceptions import RequestNotFound
 from guillotina_elasticsearch.interfaces import IConnectionFactoryUtility
 from guillotina_elasticsearch.utility import DefaultConnnectionFactoryUtility
+from opensearchpy import AsyncOpenSearch
 
 import asyncio
 

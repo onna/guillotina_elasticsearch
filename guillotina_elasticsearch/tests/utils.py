@@ -1,14 +1,14 @@
-from opensearchpy import AsyncOpenSearch
 from guillotina import app_settings
 from guillotina import task_vars
 from guillotina.component import get_utility
 from guillotina.interfaces import ICatalogUtility
 from guillotina.tests import utils
 from guillotina.tests.utils import get_container
+from opensearchpy import AsyncOpenSearch
 
 import asyncio
-import opensearchpy.exceptions
 import json
+import opensearchpy.exceptions
 import time
 
 
