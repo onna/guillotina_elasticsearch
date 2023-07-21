@@ -152,7 +152,7 @@ async def test_reindexes_moved_content(es_requester):
         async def _test():
             assert await search.get_doc_count(container) == 3
             result = await search.get_connection().get(
-                index=index_name, doc_type="_doc", id=resp3["@uid"]
+                index=index_name, id=resp3["@uid"]
             )
             assert result is not None
 
@@ -182,17 +182,11 @@ async def test_reindexes_moved_content(es_requester):
 
         async def _test():
             result = await search.get_connection().get(
-                index=index_name,
-                doc_type="_doc",
-                id=resp3["@uid"],
-                stored_fields="path",
+                index=index_name, id=resp3["@uid"], stored_fields="path"
             )
             assert result["fields"]["path"] == ["/moved-foobar/foobar/foobar"]
             result = await search.get_connection().get(
-                index=index_name,
-                doc_type="_doc",
-                id=resp1["@uid"],
-                stored_fields="path,parent_uuid",
+                index=index_name, id=resp1["@uid"], stored_fields="path,parent_uuid"
             )
             assert result["fields"]["path"] == ["/moved-foobar"]
             assert result["fields"]["parent_uuid"] == ["FOOOBBAR MOVED TO NEW PARENT"]
@@ -212,17 +206,11 @@ async def test_reindexes_moved_content(es_requester):
 
         async def __test():
             result = await search.get_connection().get(
-                index=index_name,
-                doc_type="_doc",
-                id=resp3["@uid"],
-                stored_fields="path,parent_uuid",
+                index=index_name, id=resp3["@uid"], stored_fields="path,parent_uuid"
             )
             assert result["fields"]["path"] == ["/foobar/foobar/foobar"]
             result = await search.get_connection().get(
-                index=index_name,
-                doc_type="_doc",
-                id=resp1["@uid"],
-                stored_fields="path,parent_uuid",
+                index=index_name, id=resp1["@uid"], stored_fields="path,parent_uuid"
             )
             assert result["fields"]["path"] == ["/foobar"]
             assert (
