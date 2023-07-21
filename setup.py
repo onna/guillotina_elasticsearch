@@ -41,6 +41,7 @@ setup(
         "mypy_extensions",
         "lru-dict",
         "backoff",
+        "aiohttp",
         "zope.interface>=5.0.1,<6",
     ],
     tests_require=test_requires,
