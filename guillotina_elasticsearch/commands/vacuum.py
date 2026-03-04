@@ -75,28 +75,33 @@ class Vacuum:
         # go through one index at a time...
         indexes = [self.index_name]
         for index_name in indexes:
+            body = {"sort": [{"_id": "asc"}]}
             try:
                 result = await self.conn.search(
                     index=index_name,
-                    scroll="15m",
                     size=PAGE_SIZE,
                     _source=False,
-                    body={"sort": ["_doc"]},
+                    body=body,
                 )
             except elasticsearch.exceptions.NotFoundError:
                 continue
             yield [r["_id"] for r in result["hits"]["hits"]], index_name
-            scroll_id = result["_scroll_id"]
-            while scroll_id:
+
+            while result["hits"]["hits"]:
+                body["search_after"] = result["hits"]["hits"][-1]["sort"]
                 try:
-                    result = await self.conn.scroll(scroll_id=scroll_id, scroll="5m")
+                    result = await self.conn.search(
+                        index=index_name,
+                        size=PAGE_SIZE,
+                        _source=False,
+                        body=body,
+                    )
                 except elasticsearch.exceptions.TransportError:
                     # no results
                     break
-                if len(result["hits"]["hits"]) == 0:
+                if not result["hits"]["hits"]:
                     break
                 yield [r["_id"] for r in result["hits"]["hits"]], index_name
-                scroll_id = result["_scroll_id"]
 
     async def iter_paged_db_keys(self, oids):
         if self.use_tid_query:

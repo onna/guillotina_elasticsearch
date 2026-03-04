@@ -213,7 +213,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         await reindexer.reindex(obj)
 
     async def _build_security_query(
-        self, context, query, size=10, scroll=None, unrestricted=False
+        self, context, query, size=10, unrestricted=False
     ):
         if query is None:
             query = {}
@@ -228,9 +228,6 @@ class ElasticSearchUtility(DefaultSearchUtility):
             "body": merge_dicts(query, permission_query),
             "size": query.get("size", size),
         }
-
-        if scroll:
-            result["scroll"] = scroll
 
         logger.debug(result)
         return result
@@ -273,7 +270,6 @@ class ElasticSearchUtility(DefaultSearchUtility):
         query,
         size=10,
         request=None,
-        scroll=None,
         index=None,
         search_type=None,
         preference=None,
@@ -294,7 +290,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
             except RequestNotFound:
                 pass
 
-        q = await self._build_security_query(context, query, size, scroll, unrestricted)
+        q = await self._build_security_query(context, query, size, unrestricted)
         q["ignore_unavailable"] = True
 
         if search_type:
@@ -323,8 +319,6 @@ class ElasticSearchUtility(DefaultSearchUtility):
             final["suggest"] = result["suggest"]
         if "profile" in result:
             final["profile"] = result["profile"]
-        if "_scroll_id" in result:
-            final["_scroll_id"] = result["_scroll_id"]
 
         tdif = time.time() - t1
         logger.debug(f"Time ELASTIC {tdif}")
@@ -359,7 +353,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         return path_query
 
     async def get_by_path(
-        self, container, path, depth=-1, query=None, size=10, scroll=None, index=None
+        self, container, path, depth=-1, query=None, size=10, index=None
     ):
         if query is None:
             query = {}
@@ -376,7 +370,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
             # We need the local roles
 
         return await self.search_raw(
-            context=container, query=query, size=size, scroll=scroll, index=index
+            context=container, query=query, size=size, index=index
         )
 
     async def unindex_all_children(
