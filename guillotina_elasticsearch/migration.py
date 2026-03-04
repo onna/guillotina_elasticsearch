@@ -257,23 +257,25 @@ class Migrator:
         page_size = 3000
         ids = []
         index_name = await self.index_manager.get_index_name()
-        result = await self.conn.search(
-            index=index_name,
-            scroll="2m",
-            size=page_size,
-            stored_fields="",
-            _source=False,
-            body={"sort": ["_doc"]},
-        )
-        ids.extend([r["_id"] for r in result["hits"]["hits"]])
-        scroll_id = result["_scroll_id"]
-        while scroll_id:
-            result = await self.conn.scroll(scroll_id=scroll_id, scroll="2m")
-            if len(result["hits"]["hits"]) == 0:
+        body = {"sort": [{"_id": "asc"}]}
+
+        while True:
+            result = await self.conn.search(
+                index=index_name,
+                size=page_size,
+                stored_fields="",
+                _source=False,
+                body=body,
+            )
+            hits = result["hits"]["hits"]
+            if not hits:
                 break
-            ids.extend([r["_id"] for r in result["hits"]["hits"]])
+            ids.extend([r["_id"] for r in hits])
             self.response.write(f"Retrieved {len(ids)} doc ids")
-            scroll_id = result["_scroll_id"]
+            if len(hits) < page_size:
+                break
+            body["search_after"] = hits[-1]["sort"]
+
         self.response.write(f"Retrieved {len(ids)}. Copied {self.copied_docs} docs")
         return ids
 
