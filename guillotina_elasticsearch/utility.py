@@ -441,6 +441,11 @@ class ElasticSearchUtility(DefaultSearchUtility):
             for item in results.get("items", []):
                 if item.get("delete", {}).get("result") == "deleted":
                     deleted += 1
+            throttle = app_settings.get("elasticsearch", {}).get(
+                "batch_throttle_seconds", 0
+            )
+            if throttle > 0:
+                await asyncio.sleep(throttle)
         return {"deleted": deleted}
 
     async def update_by_query(self, query, context=None, indexes=None):
@@ -480,6 +485,11 @@ class ElasticSearchUtility(DefaultSearchUtility):
                 updated += result["updated"]
             else:
                 self.log_result(result, "Updating children")
+            throttle = app_settings.get("elasticsearch", {}).get(
+                "batch_throttle_seconds", 0
+            )
+            if throttle > 0:
+                await asyncio.sleep(throttle)
         return {"updated": updated}
 
     @backoff.on_exception(
