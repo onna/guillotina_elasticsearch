@@ -319,6 +319,8 @@ class ElasticSearchUtility(DefaultSearchUtility):
             final["suggest"] = result["suggest"]
         if "profile" in result:
             final["profile"] = result["profile"]
+        if "_shards" in result:
+            final["_shards"] = result["_shards"]
 
         tdif = time.time() - t1
         logger.debug(f"Time ELASTIC {tdif}")
