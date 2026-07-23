@@ -263,7 +263,17 @@ class ElasticSearchUtility(DefaultSearchUtility):
         raise QueryErrorException(
             content={
                 "reason": "search failed",
-                "failures": result["_shards"].get("failures") or [],
+                "failures": [
+                    {
+                        "reason": {
+                            "type": failure["reason"].get("type", ""),
+                            "reason": failure["reason"].get("reason", ""),
+                        }
+                        if isinstance(failure.get("reason"), dict)
+                        else {"reason": str(failure.get("reason", ""))}
+                    }
+                    for failure in result["_shards"].get("failures") or []
+                ],
             }
         )
 
