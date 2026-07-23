@@ -14,6 +14,7 @@ images.configure(
         "discovery.type": "single-node",
         "http.host": "0.0.0.0",
         "transport.host": "127.0.0.1",
+        "OPENSEARCH_JAVA_OPTS": "-Xms512m -Xmx512m -XX:-UseContainerSupport",
     },
 )
 
