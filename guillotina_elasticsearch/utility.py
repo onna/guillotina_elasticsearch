@@ -262,7 +262,12 @@ class ElasticSearchUtility(DefaultSearchUtility):
         for failure in result["_shards"].get("failures") or []:
             error_message = failure["reason"]
         logger.error(f"Search failed with error: {error_message}")
-        raise QueryErrorException(content={"reason": "search failed"})
+        raise QueryErrorException(
+            content={
+                "reason": "search failed",
+                "failures": result["_shards"].get("failures") or [],
+            }
+        )
 
     async def search_raw(
         self,
