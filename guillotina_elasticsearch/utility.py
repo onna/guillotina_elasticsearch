@@ -212,9 +212,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
         reindexer = Reindexer(self, obj, response=response, reindex_security=security)
         await reindexer.reindex(obj)
 
-    async def _build_security_query(
-        self, context, query, size=10, unrestricted=False
-    ):
+    async def _build_security_query(self, context, query, size=10, unrestricted=False):
         if query is None:
             query = {}
         build_security_query = resolve_dotted_name(

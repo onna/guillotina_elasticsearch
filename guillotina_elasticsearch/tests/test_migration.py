@@ -124,7 +124,7 @@ async def test_fixes_missing(es_requester):
         keys = await container.async_keys()
         key = random.choice(keys)
         ob = await container.async_get(key)
-        await search.remove(container, [(ob)], request=request)
+        await search.remove(container, [ob], request=request)
 
         await asyncio.sleep(1)
         await search.refresh(container)
