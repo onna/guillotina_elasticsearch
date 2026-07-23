@@ -163,9 +163,8 @@ def process_field(field, value):
     elif modifier == "wildcard":
         return match_type, {"wildcard": {field: value}}
     elif modifier == "starts":
-        value_to_search = f"{value}*"
-        if value != "/":
-            value_to_search = f"{value}/*"
+        value_to_search = value if value.endswith("/") or value == "/" else f"{value}/"
+        value_to_search = f"{value_to_search}*"
         return match_type, {"wildcard": {field: value_to_search}}
     else:
         logger.warn(

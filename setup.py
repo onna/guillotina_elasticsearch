@@ -11,6 +11,7 @@ test_requires = [
     "pytest-cov",
     "pytest-docker-fixtures[pg]>=1.3.0",
     "docker>=5.0.0,<6.0.0",
+    "requests<2.32",
     "prometheus-client>=0.9.0",  # TODO: remove
 ]
 
