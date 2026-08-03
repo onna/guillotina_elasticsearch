@@ -43,6 +43,17 @@ logger = logging.getLogger("guillotina_elasticsearch")
 
 MAX_RETRIES_ON_REINDEX = 5
 
+# ES answers 429 when a circuit breaker trips (heap pressure). Backing off
+# in place preserves batch progress; letting the exception escape fails the
+# whole task and the scan restarts from scratch on requeue.
+retry_es_429 = backoff.on_exception(
+    backoff.expo,
+    elasticsearch.exceptions.TransportError,
+    giveup=lambda e: getattr(e, "status_code", None) != 429,
+    max_tries=8,
+    max_value=60,
+)
+
 
 @configure.utility(provides=IConnectionFactoryUtility)
 class DefaultConnnectionFactoryUtility:
@@ -418,6 +429,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
             query.update({"search_after": result["hits"]["hits"][-1]["sort"]})
             result = await conn.search(index=index_name, body=query)
 
+    @retry_es_429
     @backoff.on_exception(
         backoff.constant,
         (
@@ -456,6 +468,7 @@ class ElasticSearchUtility(DefaultSearchUtility):
             indexes = await self.get_current_indexes(container)
         return await self._update_by_query(query, ",".join(indexes))
 
+    @retry_es_429
     @backoff.on_exception(
         backoff.constant,
         (asyncio.TimeoutError, elasticsearch.exceptions.ConnectionTimeout),
