@@ -20,7 +20,6 @@ from guillotina.utils import navigate_to
 from guillotina.utils import resolve_dotted_name
 from guillotina.utils.misc import get_current_container
 from guillotina_elasticsearch.events import SearchDoneEvent
-from guillotina_elasticsearch.exceptions import ElasticsearchConflictException
 from guillotina_elasticsearch.exceptions import QueryErrorException
 from guillotina_elasticsearch.interfaces import IConnectionFactoryUtility
 from guillotina_elasticsearch.interfaces import IElasticSearchUtility  # noqa b/w compat
@@ -432,34 +431,43 @@ class ElasticSearchUtility(DefaultSearchUtility):
     @retry_es_429
     @backoff.on_exception(
         backoff.constant,
-        (
-            asyncio.TimeoutError,
-            elasticsearch.exceptions.ConnectionTimeout,
-            ElasticsearchConflictException,
-        ),
+        (asyncio.TimeoutError, elasticsearch.exceptions.ConnectionTimeout),
         interval=1,
         max_tries=5,
     )
     async def _delete_by_query(self, path_query, index_name):
         conn = self.get_connection()
+        # batch_throttle_seconds paced the old client-side loop at 1000 docs
+        # per sleep; requests_per_second is the server-side equivalent.
+        throttle = app_settings.get("elasticsearch", {}).get(
+            "batch_throttle_seconds", 0
+        )
         deleted = 0
-        async for batch in self._action_by_query_batch(index_name, path_query):
-            recs = []
-            for _id, _routing in batch:
-                rec = {"_index": index_name, "_id": _id}
-                if _routing:
-                    rec["routing"] = _routing
-                recs.append(json.dumps({"delete": rec}))
-            delete_body = "\n".join(recs)
-            results = await conn.bulk(index=index_name, body=delete_body)
-            for item in results.get("items", []):
-                if item.get("delete", {}).get("result") == "deleted":
-                    deleted += 1
-            throttle = app_settings.get("elasticsearch", {}).get(
-                "batch_throttle_seconds", 0
+        # conflicts=proceed skips docs updated after the query snapshot; re-run
+        # until nothing conflicts so no children survive the unindex.
+        for _ in range(5):
+            result = await conn.delete_by_query(
+                index=index_name,
+                body={"query": path_query["query"]},
+                conflicts="proceed",
+                ignore_unavailable="true",
+                requests_per_second=1000 / throttle if throttle > 0 else -1,
+                request_timeout=600,
             )
-            if throttle > 0:
-                await asyncio.sleep(throttle)
+            deleted += result.get("deleted", 0)
+            if result.get("failures"):
+                logger.error(
+                    f"Delete by query on {index_name} aborted with failures: "
+                    f"{result['failures']}"
+                )
+                raise QueryErrorException(content={"reason": "delete by query failed"})
+            if result.get("version_conflicts", 0) == 0:
+                break
+        else:
+            logger.warning(
+                f"Delete by query on {index_name} still had version conflicts "
+                "after 5 runs"
+            )
         return {"deleted": deleted}
 
     async def update_by_query(self, query, context=None, indexes=None):
