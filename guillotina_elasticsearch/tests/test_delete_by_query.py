@@ -60,3 +60,20 @@ async def test_delete_by_query_raises_on_failures():
     )
     with pytest.raises(QueryErrorException):
         await utility._delete_by_query(PATH_QUERY, "idx")
+
+
+async def test_unindex_all_children_skips_delete_when_nothing_matches():
+    utility, conn = make_utility([])
+    conn.count = AsyncMock(return_value={"count": 0})
+    await utility.call_unindex_all_children(None, "idx", "/site/folder")
+    assert conn.count.await_count == 1
+    assert conn.delete_by_query.await_count == 0
+
+
+async def test_unindex_all_children_deletes_when_docs_match():
+    utility, conn = make_utility([{"deleted": 5, "version_conflicts": 0}])
+    conn.count = AsyncMock(return_value={"count": 5})
+    await utility.call_unindex_all_children(None, "idx", "/site/folder")
+    assert conn.delete_by_query.await_count == 1
+    kwargs = conn.count.await_args.kwargs
+    assert kwargs["body"] == conn.delete_by_query.await_args.kwargs["body"]

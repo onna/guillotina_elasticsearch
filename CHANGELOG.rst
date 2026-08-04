@@ -1,3 +1,11 @@
+7.0.6 (2026-08-04)
+------------------
+
+- Skip delete_by_query in call_unindex_all_children when the query matches
+  no documents; count first so no-op deletes stop holding a per-shard
+  scroll context for the duration of a full search phase.
+
+
 7.0.5 (2023-07-11)
 ------------------
 

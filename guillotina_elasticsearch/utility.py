@@ -403,6 +403,18 @@ class ElasticSearchUtility(DefaultSearchUtility):
     )
     async def call_unindex_all_children(self, container, index_name, content_path):
         path_query = await self.get_path_query(content_path)
+        # subtree deletes often arrive after an ancestor's delete already
+        # removed these docs; a no-op delete_by_query still pays a full
+        # search phase and holds a scroll context per shard, while count
+        # runs the query phase only
+        conn = self.get_connection()
+        result = await conn.count(
+            index=index_name,
+            body={"query": path_query["query"]},
+            ignore_unavailable="true",
+        )
+        if result.get("count", 0) == 0:
+            return
         await self._delete_by_query(path_query, index_name)
 
     async def _action_by_query_batch(self, index_name, request):
