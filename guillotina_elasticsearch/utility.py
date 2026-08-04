@@ -442,17 +442,33 @@ class ElasticSearchUtility(DefaultSearchUtility):
         throttle = app_settings.get("elasticsearch", {}).get(
             "batch_throttle_seconds", 0
         )
-        result = await conn.delete_by_query(
-            index=index_name,
-            body={"query": path_query["query"]},
-            conflicts="proceed",
-            slices="auto",
-            ignore_unavailable="true",
-            requests_per_second=1000 / throttle if throttle > 0 else -1,
-        )
-        for failure in result.get("failures", []):
-            logger.error(f"Error deleting by query on {index_name}: {failure}")
-        return {"deleted": result.get("deleted", 0)}
+        deleted = 0
+        # conflicts=proceed skips docs updated after the query snapshot; re-run
+        # until nothing conflicts so no children survive the unindex.
+        for _ in range(5):
+            result = await conn.delete_by_query(
+                index=index_name,
+                body={"query": path_query["query"]},
+                conflicts="proceed",
+                ignore_unavailable="true",
+                requests_per_second=1000 / throttle if throttle > 0 else -1,
+                request_timeout=600,
+            )
+            deleted += result.get("deleted", 0)
+            if result.get("failures"):
+                logger.error(
+                    f"Delete by query on {index_name} aborted with failures: "
+                    f"{result['failures']}"
+                )
+                raise QueryErrorException(content={"reason": "delete by query failed"})
+            if result.get("version_conflicts", 0) == 0:
+                break
+        else:
+            logger.warning(
+                f"Delete by query on {index_name} still had version conflicts "
+                "after 5 runs"
+            )
+        return {"deleted": deleted}
 
     async def update_by_query(self, query, context=None, indexes=None):
         if indexes is None:
