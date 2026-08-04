@@ -1,3 +1,4 @@
+from guillotina_elasticsearch.exceptions import ElasticsearchConflictException
 from guillotina_elasticsearch.exceptions import QueryErrorException
 from guillotina_elasticsearch.utility import ElasticSearchUtility
 from unittest.mock import AsyncMock
@@ -38,6 +39,13 @@ async def test_delete_by_query_reruns_on_version_conflicts():
     result = await utility._delete_by_query(PATH_QUERY, "idx")
     assert result == {"deleted": 12}
     assert conn.delete_by_query.await_count == 2
+
+
+async def test_delete_by_query_raises_when_conflicts_persist():
+    utility, conn = make_utility([{"deleted": 1, "version_conflicts": 3}] * 5)
+    with pytest.raises(ElasticsearchConflictException):
+        await utility._delete_by_query(PATH_QUERY, "idx")
+    assert conn.delete_by_query.await_count == 5
 
 
 async def test_delete_by_query_raises_on_failures():
