@@ -20,6 +20,7 @@ from guillotina.utils import navigate_to
 from guillotina.utils import resolve_dotted_name
 from guillotina.utils.misc import get_current_container
 from guillotina_elasticsearch.events import SearchDoneEvent
+from guillotina_elasticsearch.exceptions import ElasticsearchConflictException
 from guillotina_elasticsearch.exceptions import QueryErrorException
 from guillotina_elasticsearch.interfaces import IConnectionFactoryUtility
 from guillotina_elasticsearch.interfaces import IElasticSearchUtility  # noqa b/w compat
@@ -444,8 +445,12 @@ class ElasticSearchUtility(DefaultSearchUtility):
         )
         deleted = 0
         # conflicts=proceed skips docs updated after the query snapshot; re-run
-        # until nothing conflicts so no children survive the unindex.
-        for _ in range(5):
+        # until nothing conflicts so no children survive the unindex. Sleep
+        # between runs so a concurrent writer can settle, and escalate if
+        # conflicts persist so the caller's retry policy takes over.
+        for attempt in range(5):
+            if attempt > 0:
+                await asyncio.sleep(1)
             result = await conn.delete_by_query(
                 index=index_name,
                 body={"query": path_query["query"]},
@@ -464,9 +469,8 @@ class ElasticSearchUtility(DefaultSearchUtility):
             if result.get("version_conflicts", 0) == 0:
                 break
         else:
-            logger.warning(
-                f"Delete by query on {index_name} still had version conflicts "
-                "after 5 runs"
+            raise ElasticsearchConflictException(
+                result.get("version_conflicts"), result
             )
         return {"deleted": deleted}
 
